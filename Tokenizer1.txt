@@ -1,0 +1,137 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace Parser
+{
+    public partial class frm_1 : Form
+    {
+        public frm_1()
+        {
+            InitializeComponent();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            classifyTokens(richTextBox1.Text.Split(' ', '\n'));
+            displayTokens();
+        }
+
+        // TOKENIZER PART
+        private LinkedList<Token> classifiedTokens;
+        private void classifyTokens(String[] tokens)
+        {
+            classifiedTokens = new LinkedList<Token>();
+            Regex patternOne;
+
+            patternOne = new Regex(@"\s*R\s +\d\s*$");
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                switch (tokens[i])
+                {
+                    case "LOD":
+                    case "STR":
+                    case "SAV":
+                        classifiedTokens.AddLast(new Token(tokens[i], "DATA TRANSFER INSTRUCTION", tokens[i].Equals("LOD")?"00010001":tokens[i].Equals("STR")?"00010010":"00010011"));
+                        break;
+                    case "INC":
+                    case "DEC":
+                    case "ADD":
+                    case "SUB":
+                    case "MUL":
+                    case "DIV":
+                        classifiedTokens.AddLast(new Token(tokens[i], "ARITHMETIC INSTRUCTIONS", tokens[i].Equals("INC") ? "00100001" : tokens[i].Equals("DEC") ? "00100010" : tokens[i].Equals("ADD") ? "00100011" : tokens[i].Equals("SUB") ? "00100100" : tokens[i].Equals("MUL") ? "00100101" : "00100110"));
+                        break;
+                    case "CMP": 
+                        classifiedTokens.AddLast(new Token(tokens[i], "Comparison Operator", "00110001"));
+                        break;
+                    case "AND":
+                    case "OR":
+                    case "NOT":
+                        classifiedTokens.AddLast(new Token(tokens[i], "Logic Instruction", tokens[i].Equals("AND") ? "01000001" : tokens[i].Equals("OR") ? "01000001" : "01000011"));
+                        break;
+                    case "IFE":
+                    case "IFG": 
+                    case "IFL":
+                    case "FLY":
+                        classifiedTokens.AddLast(new Token(tokens[i], "Program Flow Instructions", tokens[i].Equals("IFE") ? "01010001" : tokens[i].Equals("IFG") ? "01010010" : tokens[i].Equals("IFL") ? "01010011" : "01010100"));
+                        break;
+
+                    default:    
+                        classifiedTokens.AddLast(new Token(tokens[i], "REGISTER", "VALUE"));
+                        break;
+
+                    //Ken voluntered to finish this shit.
+
+                }
+            }
+        }
+
+        // DISPLAY TOKEN PART
+        private void displayTokens()
+        {
+                for (int i = 0; i < classifiedTokens.Count; i++)
+                {
+                dataGridView1.Rows.Add(classifiedTokens.ElementAt(i).getToken(), classifiedTokens.ElementAt(i).getClass());
+            }
+        }
+
+        // PARSER PART
+        private LinkedList<Command> commands;
+        private void parse()
+        {
+            commands = new LinkedList<Command>();
+
+            for (int i = 0; i < classifiedTokens.Count; i++)
+            {   
+                switch (classifiedTokens.ElementAt(i).getClass())
+                {
+                    case "DATA TRANSFER INSTRUCTION":
+                    case "ARITHMETIC INSTRUCTION":
+                    case "Comparison Operation":
+                    case "Logic Instructions":
+
+                        if (classifiedTokens.ElementAt(i + 1).getClass().Equals("REGISTER"))
+                        {
+                            if (classifiedTokens.ElementAt(i + 2).getClass().Equals("REGISTER"))
+                            {
+                                commands.AddLast(new Command(classifiedTokens.ElementAt(i).getToken(), classifiedTokens.ElementAt(i + 1).getToken(), classifiedTokens.ElementAt(i+2).getToken()));
+                            }
+                            else
+                            {
+                                //prompt error: register name expected after tokens[i]
+                            }
+                        }
+                        else
+                        {
+                            //prompt error: register name expected after tokens[i]
+                        }
+                        break;
+
+                    case "Program Flow Instructions":
+
+                        if (classifiedTokens.ElementAt(i + 1).getClass().Equals("REGISTER"))
+                        {
+                            commands.AddLast(new Command(classifiedTokens.ElementAt(i).getToken(), classifiedTokens.ElementAt(i + 1).getToken()));
+                        }
+                        else
+                        {
+                            //prompt error: label name expected after tokens[i]
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+
+        }
+    }
+}
